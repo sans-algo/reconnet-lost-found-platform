@@ -1,34 +1,53 @@
 import React, { useState, useEffect } from 'react';
 import ItemCard from '../components/ItemCard';
-import { getAllItems, getLostItems, getFoundItems, searchItems, filterItems } from '../services/itemService';
+import {
+  getAllItems,
+  getLostItems,
+  getFoundItems,
+  searchItems,
+  filterItems
+} from '../services/itemService';
 
 const Dashboard = () => {
   const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // ✅ start false
   const [filter, setFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [category, setCategory] = useState('');
 
+  // 🔹 Load cached items instantly + fetch fresh in background
   useEffect(() => {
+    const cached = localStorage.getItem('dashboardItems');
+    if (cached) {
+      setItems(JSON.parse(cached)); // instant render
+    }
+
     fetchItems();
+    // eslint-disable-next-line
   }, [filter]);
 
   const fetchItems = async () => {
-    setLoading(true);
-    let result;
-    
-    if (filter === 'lost') {
-      result = await getLostItems();
-    } else if (filter === 'found') {
-      result = await getFoundItems();
-    } else {
-      result = await getAllItems();
+    try {
+      setLoading(true);
+      let result;
+
+      if (filter === 'lost') {
+        result = await getLostItems();
+      } else if (filter === 'found') {
+        result = await getFoundItems();
+      } else {
+        result = await getAllItems();
+      }
+
+      if (result.success) {
+        setItems(result.data);
+        localStorage.setItem('dashboardItems', JSON.stringify(result.data));
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false); // ✅ ALWAYS stop loading
     }
-    
-    if (result.success) {
-      setItems(result.data);
-    }
-    setLoading(false);
   };
 
   const handleSearch = async () => {
@@ -37,10 +56,12 @@ const Dashboard = () => {
       return;
     }
 
+    setLoading(true);
     const result = await searchItems(searchQuery);
     if (result.success) {
       setItems(result.data);
     }
+    setLoading(false);
   };
 
   const handleCategoryFilter = async () => {
@@ -49,22 +70,23 @@ const Dashboard = () => {
       return;
     }
 
+    setLoading(true);
     const result = await filterItems(category, null);
     if (result.success) {
       setItems(result.data);
     }
+    setLoading(false);
   };
-
-  if (loading) {
-    return <div style={styles.loading}>Loading...</div>;
-  }
 
   return (
     <div style={styles.container}>
       <h1>Lost & Found Items</h1>
 
+      {/* 🔹 INLINE LOADING (non-blocking) */}
+      {loading && <p style={styles.loading}>Loading items...</p>}
+
       <div style={styles.filterButtons}>
-        <button 
+        <button
           onClick={() => setFilter('all')}
           style={{
             ...styles.filterButton,
@@ -73,7 +95,7 @@ const Dashboard = () => {
         >
           All Items
         </button>
-        <button 
+        <button
           onClick={() => setFilter('lost')}
           style={{
             ...styles.filterButton,
@@ -82,7 +104,7 @@ const Dashboard = () => {
         >
           Lost Items
         </button>
-        <button 
+        <button
           onClick={() => setFilter('found')}
           style={{
             ...styles.filterButton,
@@ -122,12 +144,12 @@ const Dashboard = () => {
         <button onClick={handleCategoryFilter} style={styles.searchButton}>
           Filter
         </button>
-        <button 
+        <button
           onClick={() => {
             setCategory('');
             setSearchQuery('');
             fetchItems();
-          }} 
+          }}
           style={styles.clearButton}
         >
           Clear Filters
@@ -155,8 +177,8 @@ const styles = {
   },
   loading: {
     textAlign: 'center',
-    padding: '3rem',
-    fontSize: '1.2rem'
+    marginBottom: '1rem',
+    color: '#555'
   },
   filterButtons: {
     display: 'flex',
@@ -180,16 +202,14 @@ const styles = {
     flex: 1,
     padding: '0.75rem',
     border: '1px solid #ddd',
-    borderRadius: '4px',
-    fontSize: '1rem'
+    borderRadius: '4px'
   },
   searchButton: {
     padding: '0.75rem 1.5rem',
     backgroundColor: '#007bff',
     color: 'white',
     border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer'
+    borderRadius: '4px'
   },
   categoryFilter: {
     display: 'flex',
@@ -200,16 +220,14 @@ const styles = {
     flex: 1,
     padding: '0.75rem',
     border: '1px solid #ddd',
-    borderRadius: '4px',
-    fontSize: '1rem'
+    borderRadius: '4px'
   },
   clearButton: {
     padding: '0.75rem 1.5rem',
     backgroundColor: '#666',
     color: 'white',
     border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer'
+    borderRadius: '4px'
   },
   grid: {
     display: 'grid',
@@ -219,7 +237,6 @@ const styles = {
   noItems: {
     textAlign: 'center',
     padding: '2rem',
-    fontSize: '1.1rem',
     color: '#666'
   }
 };

@@ -4,20 +4,28 @@ import ItemCard from '../components/ItemCard';
 
 const MyItems = () => {
   const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // ✅ start false
 
   useEffect(() => {
+    const cached = localStorage.getItem('myItems');
+    if (cached) {
+      setItems(JSON.parse(cached)); // instant render
+    }
+
     fetchMyItems();
+    // eslint-disable-next-line
   }, []);
 
   const fetchMyItems = async () => {
     try {
+      setLoading(true);
       const response = await api.get('/items/user/my-items');
       setItems(response.data);
-      setLoading(false);
+      localStorage.setItem('myItems', JSON.stringify(response.data));
     } catch (error) {
       console.error('Error fetching items:', error);
-      setLoading(false);
+    } finally {
+      setLoading(false); // ✅ ALWAYS stop loading
     }
   };
 
@@ -28,7 +36,9 @@ const MyItems = () => {
 
     try {
       await api.delete(`/items/${itemId}`);
-      setItems(items.filter(item => item._id !== itemId));
+      const updatedItems = items.filter(item => item._id !== itemId);
+      setItems(updatedItems);
+      localStorage.setItem('myItems', JSON.stringify(updatedItems));
       alert('Item deleted successfully!');
     } catch (error) {
       console.error('Error deleting item:', error);
@@ -36,13 +46,12 @@ const MyItems = () => {
     }
   };
 
-  if (loading) {
-    return <div style={styles.loading}>Loading...</div>;
-  }
-
   return (
     <div style={styles.container}>
       <h1>My Items</h1>
+
+      {/* ✅ INLINE LOADING (non-blocking) */}
+      {loading && <div style={styles.loading}>Loading your items...</div>}
 
       {items.length === 0 ? (
         <p style={styles.noItems}>You haven't posted any items yet</p>
@@ -70,8 +79,8 @@ const styles = {
   },
   loading: {
     textAlign: 'center',
-    padding: '3rem',
-    fontSize: '1.2rem'
+    marginTop: '1rem',
+    color: '#555'
   },
   grid: {
     display: 'grid',

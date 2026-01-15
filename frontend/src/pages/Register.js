@@ -15,7 +15,6 @@ const Register = () => {
   const { register } = useContext(AuthContext);
   const navigate = useNavigate();
 
-  // Handle input changes
   const handleChange = (e) => {
     setFormData({
       ...formData,
@@ -23,13 +22,11 @@ const Register = () => {
     });
   };
 
-  // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
-    // Basic validation
     if (!formData.name || !formData.email || !formData.password || !formData.phone) {
       setError('Please fill all fields');
       setLoading(false);
@@ -48,14 +45,18 @@ const Register = () => {
       return;
     }
 
-    // Call register function from context
-    const result = await register(formData);
-    setLoading(false);
+    try {
+      const result = await register(formData);
 
-    if (result.success) {
-      navigate('/dashboard');
-    } else {
-      setError(result.message);
+      if (result.success) {
+        navigate('/dashboard');
+      } else {
+        setError(result.message);
+      }
+    } catch (err) {
+      setError('Registration failed. Please try again.');
+    } finally {
+      setLoading(false); // ✅ ALWAYS stop loading
     }
   };
 
@@ -63,9 +64,9 @@ const Register = () => {
     <div style={styles.container}>
       <div style={styles.formBox}>
         <h2>Register</h2>
-        
+
         {error && <div style={styles.error}>{error}</div>}
-        
+
         <form onSubmit={handleSubmit}>
           <div style={styles.formGroup}>
             <label>Name</label>
@@ -116,8 +117,8 @@ const Register = () => {
             />
           </div>
 
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             style={styles.button}
             disabled={loading}
           >

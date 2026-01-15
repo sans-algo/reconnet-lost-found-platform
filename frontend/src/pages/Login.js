@@ -25,20 +25,24 @@ const Login = () => {
     setError('');
     setLoading(true);
 
-    // Basic validation
     if (!formData.email || !formData.password) {
       setError('Please fill all fields');
       setLoading(false);
       return;
     }
 
-    const result = await login(formData);
-    setLoading(false);
+    try {
+      const result = await login(formData);
 
-    if (result.success) {
-      navigate('/dashboard');
-    } else {
-      setError(result.message);
+      if (result.success) {
+        navigate('/dashboard');
+      } else {
+        setError(result.message);
+      }
+    } catch (err) {
+      setError('Login failed. Please try again.');
+    } finally {
+      setLoading(false); // ✅ ALWAYS stop loading
     }
   };
 
@@ -46,9 +50,9 @@ const Login = () => {
     <div style={styles.container}>
       <div style={styles.formBox}>
         <h2>Login</h2>
-        
+
         {error && <div style={styles.error}>{error}</div>}
-        
+
         <form onSubmit={handleSubmit}>
           <div style={styles.formGroup}>
             <label>Email</label>
@@ -74,8 +78,8 @@ const Login = () => {
             />
           </div>
 
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             style={styles.button}
             disabled={loading}
           >

@@ -14,8 +14,9 @@ const AddItem = () => {
     contactPhone: '',
     contactEmail: ''
   });
-  const [image, setImage] = useState(null); // For storing file
-  const [imagePreview, setImagePreview] = useState(null); // For preview
+
+  const [image, setImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -28,35 +29,39 @@ const AddItem = () => {
     });
   };
 
+  // ✅ Base64 helper (REQUIRED FIX)
+  const toBase64 = (file) =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+    });
+
   // Handle image selection
   const handleImageChange = (e) => {
     const file = e.target.files[0];
-    
-    if (file) {
-      // Validate file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        setError('Image size should be less than 5MB');
-        return;
-      }
+    if (!file) return;
 
-      // Validate file type
-      if (!file.type.startsWith('image/')) {
-        setError('Please select an image file');
-        return;
-      }
-
-      setImage(file);
-      
-      // Create preview URL
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result);
-      };
-      reader.readAsDataURL(file);
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image size should be less than 5MB');
+      return;
     }
+
+    if (!file.type.startsWith('image/')) {
+      setError('Please select an image file');
+      return;
+    }
+
+    setImage(file);
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result);
+    };
+    reader.readAsDataURL(file);
   };
 
-  // Remove selected image
   const handleRemoveImage = () => {
     setImage(null);
     setImagePreview(null);
@@ -67,42 +72,36 @@ const AddItem = () => {
     setError('');
     setLoading(true);
 
-    // Validation
-    if (!formData.title || !formData.description || !formData.category || 
-        !formData.location || !formData.date || !formData.contactName || 
-        !formData.contactPhone || !formData.contactEmail) {
+    if (
+      !formData.title ||
+      !formData.description ||
+      !formData.category ||
+      !formData.location ||
+      !formData.date ||
+      !formData.contactName ||
+      !formData.contactPhone ||
+      !formData.contactEmail
+    ) {
       setError('Please fill all required fields');
       setLoading(false);
       return;
     }
 
     try {
-      // Prepare data to send
       let dataToSend = { ...formData };
 
-      // If image is selected, convert to base64
       if (image) {
-        const reader = new FileReader();
-        reader.readAsDataURL(image);
-        reader.onloadend = async () => {
-          dataToSend.image = reader.result; // Base64 string
-
-          // Send to backend
-          await api.post('/items', dataToSend);
-          setLoading(false);
-          alert('Item added successfully!');
-          navigate('/my-items');
-        };
-      } else {
-        // No image, send without it
-        await api.post('/items', dataToSend);
-        setLoading(false);
-        alert('Item added successfully!');
-        navigate('/my-items');
+        dataToSend.image = await toBase64(image);
       }
+
+      await api.post('/items', dataToSend);
+
+      alert('Item added successfully!');
+      navigate('/my-items');
     } catch (error) {
       setError(error.response?.data?.message || 'Failed to add item');
-      setLoading(false);
+    } finally {
+      setLoading(false); // ✅ ALWAYS stops loading
     }
   };
 
@@ -110,9 +109,9 @@ const AddItem = () => {
     <div style={styles.container}>
       <div style={styles.formBox}>
         <h2>Add Lost/Found Item</h2>
-        
+
         {error && <div style={styles.error}>{error}</div>}
-        
+
         <form onSubmit={handleSubmit}>
           <div style={styles.formGroup}>
             <label>Item Status</label>
@@ -127,7 +126,6 @@ const AddItem = () => {
             </select>
           </div>
 
-          {/* IMAGE UPLOAD SECTION */}
           <div style={styles.formGroup}>
             <label>Upload Image (Optional)</label>
             <input
@@ -136,18 +134,17 @@ const AddItem = () => {
               onChange={handleImageChange}
               style={styles.fileInput}
             />
-            <p style={styles.helpText}>Max size: 5MB. Formats: JPG, PNG, GIF</p>
+            <p style={styles.helpText}>Max size: 5MB. JPG, PNG, GIF</p>
           </div>
 
-          {/* IMAGE PREVIEW */}
           {imagePreview && (
             <div style={styles.imagePreviewContainer}>
-              <img 
-                src={imagePreview} 
-                alt="Preview" 
+              <img
+                src={imagePreview}
+                alt="Preview"
                 style={styles.imagePreview}
               />
-              <button 
+              <button
                 type="button"
                 onClick={handleRemoveImage}
                 style={styles.removeImageButton}
@@ -165,7 +162,6 @@ const AddItem = () => {
               value={formData.title}
               onChange={handleChange}
               style={styles.input}
-              placeholder="e.g., Black Leather Wallet"
             />
           </div>
 
@@ -175,8 +171,7 @@ const AddItem = () => {
               name="description"
               value={formData.description}
               onChange={handleChange}
-              style={{...styles.input, minHeight: '100px'}}
-              placeholder="Detailed description..."
+              style={{ ...styles.input, minHeight: '100px' }}
             />
           </div>
 
@@ -205,12 +200,11 @@ const AddItem = () => {
               value={formData.location}
               onChange={handleChange}
               style={styles.input}
-              placeholder="e.g., TCS Office, Whitefield"
             />
           </div>
 
           <div style={styles.formGroup}>
-            <label>Date (When Lost/Found) *</label>
+            <label>Date *</label>
             <input
               type="date"
               name="date"
@@ -228,7 +222,6 @@ const AddItem = () => {
               value={formData.contactName}
               onChange={handleChange}
               style={styles.input}
-              placeholder="Your name"
             />
           </div>
 
@@ -240,7 +233,6 @@ const AddItem = () => {
               value={formData.contactPhone}
               onChange={handleChange}
               style={styles.input}
-              placeholder="10-digit phone number"
               maxLength="10"
             />
           </div>
@@ -253,15 +245,10 @@ const AddItem = () => {
               value={formData.contactEmail}
               onChange={handleChange}
               style={styles.input}
-              placeholder="Your email"
             />
           </div>
 
-          <button 
-            type="submit" 
-            style={styles.button}
-            disabled={loading}
-          >
+          <button type="submit" style={styles.button} disabled={loading}>
             {loading ? 'Adding...' : 'Add Item'}
           </button>
         </form>
@@ -294,40 +281,33 @@ const styles = {
     width: '100%',
     padding: '0.75rem',
     border: '1px solid #ddd',
-    borderRadius: '4px',
-    fontSize: '1rem',
-    boxSizing: 'border-box'
+    borderRadius: '4px'
   },
   fileInput: {
     width: '100%',
     padding: '0.5rem',
     border: '1px solid #ddd',
-    borderRadius: '4px',
-    fontSize: '1rem',
-    boxSizing: 'border-box'
+    borderRadius: '4px'
   },
   helpText: {
     fontSize: '0.85rem',
-    color: '#666',
-    marginTop: '0.25rem'
+    color: '#666'
   },
   imagePreviewContainer: {
-    marginBottom: '1rem',
-    textAlign: 'center'
+    textAlign: 'center',
+    marginBottom: '1rem'
   },
   imagePreview: {
     maxWidth: '100%',
     maxHeight: '300px',
-    borderRadius: '8px',
-    marginBottom: '0.5rem'
+    borderRadius: '8px'
   },
   removeImageButton: {
-    padding: '0.5rem 1rem',
     backgroundColor: '#ff4444',
     color: 'white',
     border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer'
+    padding: '0.5rem 1rem',
+    borderRadius: '4px'
   },
   button: {
     width: '100%',
@@ -336,8 +316,6 @@ const styles = {
     color: 'white',
     border: 'none',
     borderRadius: '4px',
-    fontSize: '1rem',
-    cursor: 'pointer',
     marginTop: '1rem'
   },
   error: {
